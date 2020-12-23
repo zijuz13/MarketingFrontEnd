@@ -1,6 +1,18 @@
 <template>
   <div class="app-container">
     <div class="filter-container">
+      <el-dialog
+        title="请选择需要显示的字段"
+        :visible.sync="dialogVisible"
+        width="50%"
+        :before-close="handleClose">
+        <el-transfer v-model="selectedFields" :data="allFields"       :titles="['未选择字段', '已选择显示字段']"
+                     :button-texts="['到左边', '到右边']" ></el-transfer>
+        <span slot="footer" class="dialog-footer">
+       <el-button @click="dialogVisible = false">取 消</el-button>
+       <el-button type="primary" @click="confirm">确 定</el-button>
+       </span>
+      </el-dialog>
       <el-select v-model="listQuery.field" placeholder="点击选择要搜索的字段" clearable style="width: 200px" class="filter-item">
         <el-option v-for="(v,k,i) in fieldOptions" :key="i" :label="k" :value="v" />
       </el-select>
@@ -10,6 +22,9 @@
       </el-select>
       <el-button v-waves class="filter-item" type="primary" icon="el-icon-search" @click="handleFilter">
         搜索
+      </el-button>
+      <el-button v-waves class="filter-item" type="success" icon="el-icon-news" @click="dialogVisible=true">
+        过滤显示字段
       </el-button>
       <el-button class="filter-item" style="margin-left: 10px;" type="primary" icon="el-icon-edit" @click="handleCreate">
         新增联系人
@@ -29,85 +44,80 @@
       style="width: 100%;"
       @sort-change="sortChange"
     >
-      <el-table-column label="ID" prop="id" sortable="custom" align="center" width="80" :class-name="getSortClass('id')">
+      <el-table-column label="ID" prop="id" sortable="custom" align="center" width="80" :class-name="getSortClass('id')" v-if="canIdisplay('guid')">
         <template slot-scope="{row}">
           <span>{{ row.guid }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="微信号" prop="wechat" width="100">
+      <el-table-column label="微信号" v-if="canIdisplay('wechat')" prop="wechat" width="100" align="center">
         <template slot-scope="{row}">
           <span>{{ row.wechat }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="联系人姓名" prop="wechat" width="100">
+      <el-table-column label="联系人姓名" v-if="canIdisplay('name')" prop="wechat" width="100" align="center">
         <template slot-scope="{row}">
           <span>{{ row.name }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="生日" width="150px" align="center">
+      <el-table-column label="生日" v-if="canIdisplay('birthday')"  width="150px" align="center">
         <template slot-scope="{row}">
           <span>{{ row.birthday | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="创建(导入)时间" width="150px" align="center">
+      <el-table-column label="创建(导入)时间" v-if="canIdisplay('importtime')" width="150px" align="center">
         <template slot-scope="{row}">
           <span>{{ row.importtime | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="创建人" prop="wechat" width="100">
+      <el-table-column label="创建人" prop="wechat" v-if="canIdisplay('creator')" width="100" align="center">
         <template slot-scope="{row}">
           <span>{{ row.creator }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="更新时间" width="150px" align="center">
+      <el-table-column label="更新时间" width="150px" v-if="canIdisplay('updatetime')" align="center">
         <template slot-scope="{row}">
+          <span v-if="null===row.updatetime">无更新</span>
           <span>{{ row.updatetime | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="更新者" prop="wechat" width="100">
+      <el-table-column label="更新者" prop="updator" v-if="canIdisplay('updator')" width="100" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.updator }}</span>
+          <span>{{ null===row.updator?'无更新':row.updator }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="电子邮件" prop="email" width="100">
+      <el-table-column label="电子邮件" prop="email" width="200" v-if="canIdisplay('email')"  align="center">
         <template slot-scope="{row}">
           <span>{{ row.email }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="手机号码" width="130">
+      <el-table-column label="手机号码" width="130" v-if="canIdisplay('phone')" align="center">
         <template slot-scope="{row}">
           <span>{{ row.phone }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="来源" width="100">
+      <el-table-column label="来源" width="100" v-if="canIdisplay('source')" align="center">
         <template slot-scope="{row}">
           <span>{{ row.source }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="联系人地址" width="150">
+      <el-table-column label="联系人地址" width="150" v-if="canIdisplay('location')" align="center">
         <template slot-scope="{row}">
           <span>{{ row.location }}</span>
         </template>
       </el-table-column>
-      <el-table-column label="Actions" align="center" width="230" class-name="small-padding fixed-width">
+      <el-table-column label="操作" align="center" width="230" class-name="small-padding fixed-width">
         <template slot-scope="{row,$index}">
           <el-button type="primary" size="mini" @click="handleUpdate(row)">
-            Edit
-          </el-button>
-          <el-button v-if="row.status!='published'" size="mini" type="success" @click="handleModifyStatus(row,'published')">
-            Publish
-          </el-button>
-          <el-button v-if="row.status!='draft'" size="mini" @click="handleModifyStatus(row,'draft')">
-            Draft
+            编辑
           </el-button>
           <el-button v-if="row.status!='deleted'" size="mini" type="danger" @click="handleDelete(row,$index)">
-            Delete
+           删除
           </el-button>
         </template>
       </el-table-column>
     </el-table>
 
-    <pagination v-show="total>0" :total="total" :page.sync="listQuery.page" :limit.sync="listQuery.limit" @pagination="getList" />
+    <pagination v-show="total>0" :total="total" :page.sync="listQuery.page" :limit.sync="listQuery.limit" :page-sizes="[3,6,8,10,12]" @pagination="getList" />
 
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
       <el-form ref="dataForm" :rules="rules" :model="temp" label-position="left" label-width="70px" style="width: 400px; margin-left:50px;">
@@ -200,13 +210,15 @@ export default {
       list: null,
       total: 0,
       listLoading: true,
+      selectedFields:['name','wechat','guid','location','email','phone','birthday','importtime'],
       listQuery: {
         page: 1,
-        limit: 20,
+        limit: 3,
         field: '',
         text: '',
         sort: '+id'
       },
+      filterFields:['name','wechat','guid','location','email','phone','birthday','importtime'],
       importanceOptions: [1, 2, 3],
       calendarTypeOptions,
       sortOptions: [{ label: '按照ID升序展示', key: '+id' }, { label: '按照ID降序展示', key: '-id' }],
@@ -227,7 +239,8 @@ export default {
         update: 'Edit',
         create: 'Create'
       },
-      dialogPvVisible: false,
+      dialogVisible: false,
+      dialogPvVisible:false,
       pvData: [],
       rules: {
         type: [{ required: true, message: 'type is required', trigger: 'change' }],
@@ -245,14 +258,48 @@ export default {
         o[k] = key
       })
       return o
+    },
+    allFields() {
+      const fields=[];
+     Object.keys(this.fieldOptions).forEach(l=>{
+       fields.push({
+         key:this.fieldOptions[l],
+         label:l,
+         disabled:false
+       });
+     })
+      fields.push({
+        key:'birthday',
+        label:'生日',
+        disabled:false
+      })
+      return fields;
     }
   },
   created() {
     this.getList()
   },
+  watch:{
+    selectedFields(val){
+      console.log(val)
+    }
+  },
   methods: {
+    confirm(){
+      this.dialogVisible=false;
+      this.filterFields=this.selectedFields;
+    },
+    handleClose(){
+      this.dialogVisible=false;
+    },
     canIdisplay(columnName) {
-
+      let flag=false;
+      this.filterFields.forEach(field=>{
+        if(field===columnName){
+          flag=true;
+        }
+      });
+      return flag;
     },
     getList() {
       this.listLoading = true
