@@ -78,8 +78,30 @@ export const constantRoutes = [
       {
         path: 'dashboard',
         component: () => import('@/views/dashboard/index'),
-        name: 'Dashboard',
-        meta: { title: 'Dashboard', icon: 'dashboard', affix: true }
+        name: '首页',
+        meta: { title: '首页', icon: 'dashboard', affix: true }
+      }
+    ]
+  },
+  {
+    path: '/contact',
+    component: Layout,
+    meta: {
+      title: '联系人管理',
+      icon: 'peoples'
+    },
+    children: [
+      {
+        path: 'table',
+        component: () => import('@/Contact/ContactTable'),
+        name: '列表',
+        meta: { title: '联系人列表', icon: 'list', affix: true }
+      },
+      {
+        path: 'group',
+        component: () => import('@/Contact/ContactGroup'),
+        name: '分群',
+        meta: { title: '联系人分群', icon: 'user', affix: true }
       }
     ]
   },
