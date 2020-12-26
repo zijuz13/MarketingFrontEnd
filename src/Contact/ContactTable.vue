@@ -29,7 +29,7 @@
       <el-button class="filter-item" style="margin-left: 10px;" type="primary" icon="el-icon-edit" @click="handleCreate">
         新增联系人
       </el-button>
-      <el-button class="filter-item" style="margin-left: 10px;" type="primary" icon="el-icon-upload" @click="handleCreate">
+      <el-button class="filter-item" style="margin-left: 10px;" type="primary" icon="el-icon-upload" @click="openList">
         批量新增联系人
       </el-button>
     </div>
@@ -61,7 +61,7 @@
       </el-table-column>
       <el-table-column label="生日" v-if="canIdisplay('birthday')"  width="150px" align="center">
         <template slot-scope="{row}">
-          <span>{{ row.birthday | parseTime('{y}-{m}-{d} {h}:{i}') }}</span>
+          <span>{{ row.birthday | parseTime('{y}-{m}-{d}') }}</span>
         </template>
       </el-table-column>
       <el-table-column label="创建(导入)时间" v-if="canIdisplay('importtime')" width="150px" align="center">
@@ -110,7 +110,7 @@
           <el-button type="primary" size="mini" @click="handleUpdate(row)">
             编辑
           </el-button>
-          <el-button v-if="row.status!='deleted'" size="mini" type="danger" @click="handleDelete(row,$index)">
+          <el-button  size="mini" type="danger" @click="handleDelete(row,$index)">
            删除
           </el-button>
         </template>
@@ -118,38 +118,49 @@
     </el-table>
 
     <pagination v-show="total>0" :total="total" :page.sync="listQuery.page" :limit.sync="listQuery.limit" :page-sizes="[3,6,8,10,12]" @pagination="getList" />
-
+     <el-dialog title="" :visible.sync="listCreateVisible">
+       <p>请按照数据模板的格式准备要导入的数据。 点击下载：</p> 	<a href="http://file.huajun.com/contact_list.csv">《联系人模板CSV版》</a>
+     </el-dialog>
     <el-dialog :title="textMap[dialogStatus]" :visible.sync="dialogFormVisible">
       <el-form ref="dataForm" :rules="rules" :model="temp" label-position="left" label-width="70px" style="width: 400px; margin-left:50px;">
-        <el-form-item label="Type" prop="type">
-          <el-select v-model="temp.type" class="filter-item" placeholder="Please select">
-            <el-option v-for="item in calendarTypeOptions" :key="item.key" :label="item.display_name" :value="item.key" />
-          </el-select>
+        <el-form-item label="微信号" prop="wechat" label-width="100px">
+          <el-input v-model="temp.wechat" />
         </el-form-item>
-        <el-form-item label="Date" prop="timestamp">
-          <el-date-picker v-model="temp.timestamp" type="datetime" placeholder="Please pick a date" />
+        <el-form-item label="电子邮件" prop="email" label-width="100px">
+          <el-input v-model="temp.email" />
         </el-form-item>
-        <el-form-item label="Title" prop="title">
-          <el-input v-model="temp.title" />
+        <el-form-item label="联系人姓名" prop="name" label-width="100px">
+          <el-input v-model="temp.name" />
         </el-form-item>
-        <el-form-item label="Status">
-          <el-select v-model="temp.status" class="filter-item" placeholder="Please select">
-            <el-option v-for="item in statusOptions" :key="item" :label="item" :value="item" />
-          </el-select>
+        <el-form-item label="生日" prop="birthday" label-width="100px">
+          <el-date-picker v-model="temp.birthday" type="date" placeholder="请选择一个日期" />
         </el-form-item>
-        <el-form-item label="Imp">
-          <el-rate v-model="temp.importance" :colors="['#99A9BF', '#F7BA2A', '#FF9900']" :max="3" style="margin-top:8px;" />
+        <el-form-item label="手机号码" prop="phone" label-width="100px">
+          <el-input v-model="temp.phone" />
         </el-form-item>
-        <el-form-item label="Remark">
-          <el-input v-model="temp.remark" :autosize="{ minRows: 2, maxRows: 4}" type="textarea" placeholder="Please input" />
+        <el-form-item label="地址" prop="location" label-width="100px">
+          <el-input v-model="temp.location" />
         </el-form-item>
+        <el-form-item label="来源" prop="source" label-width="100px">
+          <el-input v-model="temp.source" />
+        </el-form-item>
+        <div v-if="dialogStatus==='create'">
+        <el-form-item label="创建者" prop="creator" label-width="100px">
+          <el-input v-model="temp.creator" />
+        </el-form-item>
+        </div>
+        <div v-else>
+          <el-form-item label="更新者" prop="updator" label-width="100px">
+            <el-input v-model="temp.updator" />
+          </el-form-item>
+        </div>
       </el-form>
       <div slot="footer" class="dialog-footer">
         <el-button @click="dialogFormVisible = false">
-          Cancel
+          取消
         </el-button>
         <el-button type="primary" @click="dialogStatus==='create'?createData():updateData()">
-          Confirm
+          确认保存
         </el-button>
       </div>
     </el-dialog>
@@ -160,7 +171,7 @@
         <el-table-column prop="pv" label="Pv" />
       </el-table>
       <span slot="footer" class="dialog-footer">
-        <el-button type="primary" @click="dialogPvVisible = false">Confirm</el-button>
+        <el-button type="primary" @click="dialogPvVisible = false">确认保存</el-button>
       </span>
     </el-dialog>
   </div>
@@ -216,8 +227,10 @@ export default {
         limit: 3,
         field: '',
         text: '',
-        sort: '+id'
+        sort: '+id',
+        groupId:0
       },
+      listCreateVisible:false,
       filterFields:['name','wechat','guid','location','email','phone','birthday','importtime'],
       importanceOptions: [1, 2, 3],
       calendarTypeOptions,
@@ -226,26 +239,32 @@ export default {
       showReviewer: false,
       temp: {
         id: undefined,
-        importance: 1,
-        remark: '',
-        timestamp: new Date(),
-        title: '',
-        type: '',
-        status: 'published'
+        wechat:undefined,
+        email:undefined,
+        phone:undefined,
+        location:undefined,
+        birthday:undefined,
+        creator:undefined,
+        updator:undefined,
+        name:undefined,
+        source:undefined
       },
       dialogFormVisible: false,
       dialogStatus: '',
       textMap: {
-        update: 'Edit',
-        create: 'Create'
+        update: '编辑联系人',
+        create: '创建联系人'
       },
       dialogVisible: false,
       dialogPvVisible:false,
       pvData: [],
       rules: {
-        type: [{ required: true, message: 'type is required', trigger: 'change' }],
-        timestamp: [{ type: 'date', required: true, message: 'timestamp is required', trigger: 'change' }],
-        title: [{ required: true, message: 'title is required', trigger: 'blur' }]
+        type: [{ required: true, message: 'type is required', trigger: 'blur' }],
+        email: [{ required: true, message: 'email字段必填', trigger: 'blur' }],
+        wechat: [{ required: true, message: 'wechat字段必填', trigger: 'blur' }],
+        phone: [{ required: true, message: 'phone字段必填', trigger: 'blur' }],
+        creator: [{ required: true, message: '创建者必须specify', trigger: 'blur' }],
+        updator: [{ required: true, message: '更新者必须specify', trigger: 'blur' }]
       },
       downloadLoading: false
     }
@@ -265,7 +284,7 @@ export default {
        fields.push({
          key:this.fieldOptions[l],
          label:l,
-         disabled:false
+         disabled:l==='姓名'?true:false
        });
      })
       fields.push({
@@ -273,18 +292,42 @@ export default {
         label:'生日',
         disabled:false
       })
+      fields.push({
+        key:'updatetime',
+        label:'更新时间',
+        disabled:false
+      })
+      fields.push({
+        key:'importtime',
+        label:'导入时间',
+        disabled:false
+      })
+      fields.push({
+        key:'guid',
+        label:'联系人ID',
+        disabled:true
+      })
+      fields.push({
+        key:'email',
+        label:'电子邮件',
+        disabled:true
+      })
       return fields;
     }
   },
   created() {
+    console.log(this.$route.params.id)
+    if(this.$route.params&&':id'!=this.$route.params.id){
+      this.listQuery.groupId=this.$route.params.id;
+    }
     this.getList()
   },
   watch:{
-    selectedFields(val){
-      console.log(val)
-    }
   },
   methods: {
+    openList(){
+      this.listCreateVisible=true;
+    },
     confirm(){
       this.dialogVisible=false;
       this.filterFields=this.selectedFields;
@@ -345,12 +388,15 @@ export default {
     resetTemp() {
       this.temp = {
         id: undefined,
-        importance: 1,
-        remark: '',
-        timestamp: new Date(),
-        title: '',
-        status: 'published',
-        type: ''
+          wechat:undefined,
+          email:undefined,
+          phone:undefined,
+          location:undefined,
+          birthday:undefined,
+          creator:undefined,
+          updator:undefined,
+          creator:undefined,
+          name:undefined
       }
     },
     handleCreate() {
@@ -364,15 +410,22 @@ export default {
     createData() {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
-          this.temp.id = parseInt(Math.random() * 100) + 1024 // mock a id
-          this.temp.author = 'vue-element-admin'
-          createArticle(this.temp).then(() => {
-            this.list.unshift(this.temp)
+          let temp = Object.assign({},this.temp);
+          temp.birthday = +new Date(temp.birthday)
+          saveContacter(temp).then(() => {
             this.dialogFormVisible = false
             this.$notify({
-              title: 'Success',
-              message: 'Created Successfully',
+              title: '成功',
+              message: '成功添加联系人为:'+temp.name+'的记录',
               type: 'success',
+              duration: 2000
+            })
+            this.getList()
+          }).catch(()=>{
+            this.$notify({
+              title: '错误',
+              message: '无法添加联系人:'+temp.name,
+              type: 'error',
               duration: 2000
             })
           })
@@ -381,7 +434,7 @@ export default {
     },
     handleUpdate(row) {
       this.temp = Object.assign({}, row) // copy obj
-      this.temp.timestamp = new Date(this.temp.timestamp)
+      this.temp.birthday = new Date(Number(this.temp.birthday))
       this.dialogStatus = 'update'
       this.dialogFormVisible = true
       this.$nextTick(() => {
@@ -392,15 +445,21 @@ export default {
       this.$refs['dataForm'].validate((valid) => {
         if (valid) {
           const tempData = Object.assign({}, this.temp)
-          tempData.timestamp = +new Date(tempData.timestamp) // change Thu Nov 30 2017 16:41:05 GMT+0800 (CST) to 1512031311464
-          updateArticle(tempData).then(() => {
-            const index = this.list.findIndex(v => v.id === this.temp.id)
-            this.list.splice(index, 1, this.temp)
+          tempData.birthday = +new Date(tempData.birthday) // change Thu Nov 30 2017 16:41:05 GMT+0800 (CST) to 1512031311464
+          updateContacter(tempData).then(() => {
             this.dialogFormVisible = false
             this.$notify({
-              title: 'Success',
-              message: 'Update Successfully',
+              title: '成功',
+              message: '更新成功！',
               type: 'success',
+              duration: 2000
+            })
+            this.getList();
+          }).catch(()=>{
+            this.$notify({
+              title: '错误',
+              message: '无法更新联系人:'+this.temp.name+'请联系管理员！',
+              type: 'error',
               duration: 2000
             })
           })
@@ -408,13 +467,22 @@ export default {
       })
     },
     handleDelete(row, index) {
-      this.$notify({
-        title: 'Success',
-        message: 'Delete Successfully',
-        type: 'success',
-        duration: 2000
+      deleteContacter(row.guid).then(()=>{
+        this.$notify({
+          title: '成功',
+          message: '成功删除联系人:'+row.name,
+          type: 'success',
+          duration: 2000
+        })
+        this.getList();
+      }).catch(()=>{
+        this.$notify({
+          title: '错误',
+          message: '无法删除联系人:'+row.name+'请联系管理员！',
+          type: 'error',
+          duration: 2000
+        })
       })
-      this.list.splice(index, 1)
     },
     handleFetchPv(pv) {
       fetchPv(pv).then(response => {

@@ -92,16 +92,38 @@ export const constantRoutes = [
     },
     children: [
       {
-        path: 'table',
+        path: 'table/:id',
         component: () => import('@/Contact/ContactTable'),
         name: '列表',
-        meta: { title: '联系人列表', icon: 'list', affix: true }
+        meta: { title: '联系人列表', icon: 'list', affix:false }
       },
       {
         path: 'group',
         component: () => import('@/Contact/ContactGroup'),
         name: '分群',
-        meta: { title: '联系人分群', icon: 'user', affix: true }
+        meta: { title: '联系人分群', icon: 'user', affix: false }
+      }
+    ]
+  },
+  {
+    path: '/market',
+    component: Layout,
+    meta: {
+      title: '营销旅程',
+      icon: 'guide'
+    },
+    children: [
+      {
+        path: 'material',
+        component: () => import('@/emails/templateTable'),
+        name: '素材',
+        meta: { title: '营销素材', icon: 'example', affix: false }
+      },
+      {
+        path: 'group',
+        component: () => import('@/Contact/ContactGroup'),
+        name: '营销旅程',
+        meta: { title: '营销旅程', icon: 'international', affix: false }
       }
     ]
   },
@@ -113,7 +135,7 @@ export const constantRoutes = [
         path: 'index',
         component: () => import('@/views/documentation/index'),
         name: 'Documentation',
-        meta: { title: 'Documentation', icon: 'documentation', affix: true }
+        meta: { title: 'Documentation', icon: 'documentation', affix: false }
       }
     ]
   },
